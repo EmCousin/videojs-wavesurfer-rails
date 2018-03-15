@@ -40,56 +40,43 @@ var WavesurferTech = function (_Html) {
         // HTML5 audio. Native tracks fail because we are using wavesurfer
         options.nativeTextTracks = false;
 
-        return _possibleConstructorReturn(this, (WavesurferTech.__proto__ || Object.getPrototypeOf(WavesurferTech)).call(this, options, ready));
+        // we need the player instance so that we can access the current
+        // wavesurfer plugin attached to that player
+        var _this = _possibleConstructorReturn(this, (WavesurferTech.__proto__ || Object.getPrototypeOf(WavesurferTech)).call(this, options, ready));
+
+        _this.activePlayer = videojs(options.playerId);
+        _this.waveready = false;
+
+        // track when wavesurfer is fully initialized (ready)
+        _this.activePlayer.on('waveReady', function () {
+            _this.waveready = true;
+        });
+
+        if (!_this.playerIsUsingWavesurfer()) {
+            // the plugin hasn't been initialized for this player, so it
+            // likely doesn't need our html5 tech modifications
+            return _possibleConstructorReturn(_this);
+        }
+
+        // proxy timeupdate events so that the tech emits them too. This will
+        // allow the rest of videoJS to work (including text tracks)
+        _this.activePlayer.activeWavesurferPlugin.on('timeupdate', function () {
+            _this.trigger('timeupdate');
+        });
+        return _this;
     }
 
+    /**
+     * Determine whether or not the player is trying use wavesurfer
+     * @returns {boolean}
+     */
+
+
     _createClass(WavesurferTech, [{
-        key: 'setActivePlayer',
-        value: function setActivePlayer(player) {
-            var _this2 = this;
-
-            // we need the player instance so that we can access the current
-            // wavesurfer plugin attached to that player
-            this.activePlayer = player;
-            this.waveready = false;
-
-            // track when wavesurfer is fully initialized (ready)
-            this.activePlayer.on('waveReady', function () {
-                _this2.waveready = true;
-            });
-
-            if (!this.playerIsUsingWavesurfer()) {
-                // the plugin hasn't been initialized for this player, so it
-                // likely doesn't need our html5 tech modifications
-                return;
-            }
-
-            // proxy timeupdate events so that the tech emits them too. This will
-            // allow the rest of videoJS to work (including text tracks)
-            this.activePlayer.activeWavesurferPlugin.on('timeupdate', function () {
-                _this2.trigger('timeupdate');
-            });
-        }
-
-        /**
-         * Determine whether or not the player is trying use the wavesurfer plugin
-         * @returns {boolean}
-         */
-
-    }, {
         key: 'playerIsUsingWavesurfer',
         value: function playerIsUsingWavesurfer() {
-            var availablePlugins = videojs.getPlugins();
-            var usingWavesurferPlugin = 'wavesurfer' in availablePlugins;
-            var usingRecordPlugin = 'record' in availablePlugins;
-
-            return usingWavesurferPlugin && !usingRecordPlugin;
+            return this.activePlayer.activeWavesurferPlugin !== undefined;
         }
-
-        /**
-         * Start playback.
-         */
-
     }, {
         key: 'play',
         value: function play() {
@@ -100,11 +87,6 @@ var WavesurferTech = function (_Html) {
 
             return this.activePlayer.activeWavesurferPlugin.play();
         }
-
-        /**
-         * Pause playback.
-         */
-
     }, {
         key: 'pause',
         value: function pause() {
@@ -156,52 +138,6 @@ var WavesurferTech = function (_Html) {
             }
 
             return this.activePlayer.activeWavesurferPlugin.getDuration();
-        }
-
-        /**
-         * Set the current time
-         *
-         * @since 2.1.1
-         * @param {number} time
-         * @returns {*}
-         */
-
-    }, {
-        key: 'setCurrentTime',
-        value: function setCurrentTime(time) {
-            if (!this.playerIsUsingWavesurfer()) {
-                // fall back to html5 tech functionality
-                return _get(WavesurferTech.prototype.__proto__ || Object.getPrototypeOf(WavesurferTech.prototype), 'currentTime', this).call(this, time);
-            }
-
-            if (!this.waveready) {
-                return 0;
-            }
-
-            return this.activePlayer.activeWavesurferPlugin.surfer.seekTo(time / this.activePlayer.activeWavesurferPlugin.surfer.getDuration());
-        }
-
-        /**
-         * Sets the current playback rate. A playback rate of
-         * 1.0 represents normal speed and 0.5 would indicate half-speed
-         * playback, for instance.
-         *
-         * @since 2.1.1
-         * @param {number} [rate]
-         *       New playback rate to set.
-         *
-         * @return {number}
-         *         The current playback rate when getting or 1.0
-         */
-
-    }, {
-        key: 'setPlaybackRate',
-        value: function setPlaybackRate(rate) {
-            if (this.playerIsUsingWavesurfer()) {
-                this.activePlayer.activeWavesurferPlugin.surfer.setPlaybackRate(rate);
-            }
-
-            return _get(WavesurferTech.prototype.__proto__ || Object.getPrototypeOf(WavesurferTech.prototype), 'setPlaybackRate', this).call(this, rate);
         }
     }]);
 
